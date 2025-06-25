@@ -78,6 +78,24 @@
     <button class="btn" onclick="proceedToAction()">👉 आगे बढ़ें</button>
   </div>
 
+  <!-- नया विषय जोड़ें -->
+  <div class="section">
+    <h3>➕ नया विषय जोड़ें</h3>
+    <input id="newMain" placeholder="मुख्य विषय (जैसे: Economics)">
+    <input id="newSubs" placeholder="उपविषय (कॉमा से अलग करें)">
+    <button class="btn" onclick="addNewSubject()">💾 जोड़ें</button>
+  </div>
+
+  <!-- उपविषय प्रबंधन -->
+  <div class="section">
+    <h3>🛠️ उपविषय प्रबंधन</h3>
+    <select id="manageMain" onchange="populateSubList()">
+      <option value="">-- विषय चुनें --</option>
+    </select>
+    <select id="subList"></select>
+    <button class="btn" onclick="deleteSub()">🗑️ उपविषय हटाएं</button>
+  </div>
+
   <!-- GitHub Gist Sync -->
   <div class="section">
     <h3>☁️ GitHub Gist Sync</h3>
@@ -90,6 +108,86 @@
 </div>
 
 <script>
+const subjects = JSON.parse(localStorage.getItem("quiz_subjects") || "{}");
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function populateDropdowns() {
+  const main = document.getElementById("mainSubject");
+  const manage = document.getElementById("manageMain");
+  main.innerHTML = '<option value="">-- विषय चुनें --</option>';
+  manage.innerHTML = '<option value="">-- विषय चुनें --</option>';
+
+  for (let key in subjects) {
+    const opt1 = new Option(capitalize(key), key);
+    const opt2 = new Option(capitalize(key), key);
+    main.appendChild(opt1);
+    manage.appendChild(opt2);
+  }
+}
+
+function populateSubSubjects() {
+  const subject = document.getElementById("mainSubject").value;
+  const subs = subjects[subject] || [];
+  const subSelect = document.getElementById("subSubject");
+  subSelect.innerHTML = '<option value="">-- उपविषय चुनें --</option>';
+  subs.forEach(sub => {
+    subSelect.appendChild(new Option(sub, sub));
+  });
+}
+
+function addNewSubject() {
+  const newMain = document.getElementById("newMain").value.trim().toLowerCase();
+  const newSubs = document.getElementById("newSubs").value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!newMain || newSubs.length === 0) {
+    alert("❗ कृपया विषय और उपविषय भरें");
+    return;
+  }
+  subjects[newMain] = newSubs;
+  localStorage.setItem("quiz_subjects", JSON.stringify(subjects));
+  document.getElementById("newMain").value = "";
+  document.getElementById("newSubs").value = "";
+  populateDropdowns();
+  alert("✅ नया विषय जोड़ा गया!");
+}
+
+function populateSubList() {
+  const selected = document.getElementById("manageMain").value;
+  const list = document.getElementById("subList");
+  list.innerHTML = "";
+  if (subjects[selected]) {
+    subjects[selected].forEach(sub => {
+      list.appendChild(new Option(sub, sub));
+    });
+  }
+}
+
+function deleteSub() {
+  const subject = document.getElementById("manageMain").value;
+  const sub = document.getElementById("subList").value;
+  if (subject && sub) {
+    subjects[subject] = subjects[subject].filter(s => s !== sub);
+    localStorage.setItem("quiz_subjects", JSON.stringify(subjects));
+    populateSubList();
+    populateSubSubjects();
+    alert("🗑️ उपविषय हटा दिया गया!");
+  }
+}
+
+function proceedToAction() {
+  const main = document.getElementById("mainSubject").value;
+  const sub = document.getElementById("subSubject").value;
+  if (!main || !sub) {
+    alert("⚠️ कृपया विषय और उपविषय चुनें!");
+    return;
+  }
+  localStorage.setItem("selectedMain", main);
+  localStorage.setItem("selectedSub", sub);
+  window.location.href = "action.html";
+}
+
 function saveToken() {
   const token = document.getElementById("gistToken").value.trim();
   if (!token) {
@@ -107,7 +205,7 @@ async function exportToGist() {
     return;
   }
   const data = {
-    subjects: JSON.parse(localStorage.getItem("quiz_subjects") || "{}"),
+    subjects,
     main: localStorage.getItem("selectedMain"),
     sub: localStorage.getItem("selectedSub"),
     quizData: {}
@@ -163,6 +261,8 @@ async function importFromGist() {
   alert("✅ Gist डेटा सफलतापूर्वक लोड हुआ!");
   location.reload();
 }
+
+window.onload = populateDropdowns;
 </script>
 
 </body>
