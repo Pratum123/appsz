@@ -1,0 +1,169 @@
+<!-- ✅ Updated index.html with GitHub Gist Sync (canvas me nhi chahiye) -->
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>📘 विषय चयन</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6fb;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #3949ab;
+      color: white;
+      padding: 20px;
+      font-size: 24px;
+      text-align: center;
+    }
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #3949ab;
+      font-size: 22px;
+    }
+    select, input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .btn {
+      background: #3949ab;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    h3 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>📘 Quiz App</header>
+
+<div class="container">
+  <h1>📘 विषय और उपविषय चयन</h1>
+
+  <!-- विषय चयन -->
+  <div class="section">
+    <label><strong>मुख्य विषय:</strong></label>
+    <select id="mainSubject" onchange="populateSubSubjects()">
+      <option value="">-- विषय चुनें --</option>
+    </select>
+    <label><strong>उपविषय:</strong></label>
+    <select id="subSubject">
+      <option value="">-- उपविषय चुनें --</option>
+    </select>
+    <button class="btn" onclick="proceedToAction()">👉 आगे बढ़ें</button>
+  </div>
+
+  <!-- GitHub Gist Sync -->
+  <div class="section">
+    <h3>☁️ GitHub Gist Sync</h3>
+    <input id="gistToken" placeholder="🔑 GitHub Token">
+    <button class="btn" onclick="saveToken()">🔐 Token सेव करें</button>
+    <button class="btn" onclick="exportToGist()">💾 Gist में सेव करें</button>
+    <input id="gistIdInput" placeholder="🔗 Gist ID डालें">
+    <button class="btn" onclick="importFromGist()">📥 Gist से लोड करें</button>
+  </div>
+</div>
+
+<script>
+function saveToken() {
+  const token = document.getElementById("gistToken").value.trim();
+  if (!token) {
+    alert("❗ कृपया GitHub Token दर्ज करें");
+    return;
+  }
+  localStorage.setItem("gist_token", token);
+  alert("✅ Token सुरक्षित किया गया");
+}
+
+async function exportToGist() {
+  const token = localStorage.getItem("gist_token");
+  if (!token) {
+    alert("❗ पहले GitHub Token सेव करें");
+    return;
+  }
+  const data = {
+    subjects: JSON.parse(localStorage.getItem("quiz_subjects") || "{}"),
+    main: localStorage.getItem("selectedMain"),
+    sub: localStorage.getItem("selectedSub"),
+    quizData: {}
+  };
+  for (let key in localStorage) {
+    if (key.startsWith("quiz_")) {
+      data.quizData[key] = JSON.parse(localStorage.getItem(key));
+    }
+  }
+  const body = {
+    description: "Quiz App Backup",
+    public: false,
+    files: {
+      "quiz_backup.json": {
+        content: JSON.stringify(data, null, 2)
+      }
+    }
+  };
+  const res = await fetch("https://api.github.com/gists", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const result = await res.json();
+  if (result.id) {
+    prompt("✅ Gist सफलतापूर्वक बना!\nयह ID सेव करें:", result.id);
+  } else {
+    alert("❌ Gist सेव नहीं हो पाया");
+  }
+}
+
+async function importFromGist() {
+  const gistId = document.getElementById("gistIdInput").value.trim();
+  if (!gistId) {
+    alert("❗ कृपया Gist ID दर्ज करें");
+    return;
+  }
+  const res = await fetch(`https://api.github.com/gists/${gistId}`);
+  const gist = await res.json();
+  const content = gist.files["quiz_backup.json"].content;
+  const data = JSON.parse(content);
+  if (data.subjects) localStorage.setItem("quiz_subjects", JSON.stringify(data.subjects));
+  if (data.main) localStorage.setItem("selectedMain", data.main);
+  if (data.sub) localStorage.setItem("selectedSub", data.sub);
+  if (data.quizData) {
+    for (let key in data.quizData) {
+      localStorage.setItem(key, JSON.stringify(data.quizData[key]));
+    }
+  }
+  alert("✅ Gist डेटा सफलतापूर्वक लोड हुआ!");
+  location.reload();
+}
+</script>
+
+</body>
+</html>

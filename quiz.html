@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>📘 Quiz App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- canvas me nhi chahiye -->
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #eef1f7;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #3949ab;
+      color: white;
+      padding: 20px;
+      font-size: 24px;
+      text-align: center;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 700px;
+      margin: 30px auto;
+    }
+    textarea, input, select {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .btn {
+      background: #3949ab;
+      color: white;
+      font-weight: bold;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 15px;
+      border-radius: 6px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      margin: 8px 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .edit-btn {
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      border: none;
+      margin-right: 10px;
+      cursor: pointer;
+      line-height: 24px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .explanation {
+      margin-top: 20px;
+      font-weight: bold;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+    #gotoContainer {
+      margin-bottom: 15px;
+    }
+    #gotoInput {
+      width: 60%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    #gotoBtn {
+      padding: 9px 12px;
+      background: #3949ab;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<header>📘 Quiz App</header>
+<!-- बाकी कोड quiz.js में है, canvas का उपयोग नहीं किया गया है -->
+<h2 id="pageTitle" style="text-align:center; color:#3949ab;"></h2>
+
+<div id="inputSection" class="section" style="display:none;">
+  <h3>➕ नया प्रश्न जोड़ें</h3>
+  <textarea id="question" placeholder="प्रश्न"></textarea>
+  <input id="optA" placeholder="विकल्प A">
+  <input id="optB" placeholder="विकल्प B">
+  <input id="optC" placeholder="विकल्प C">
+  <input id="optD" placeholder="विकल्प D">
+  <select id="correct">
+    <option value="A">A</option>
+    <option value="B">B</option>
+    <option value="C">C</option>
+    <option value="D">D</option>
+  </select>
+  <textarea id="explanation" placeholder="व्याख्या"></textarea>
+  <button class="btn" onclick="saveQuestion()">💾 सेव करें</button>
+  <div id="questionCount" style="margin-top:10px;"></div>
+  <div id="editList" style="margin-top:10px;"></div>
+</div>
+
+<div id="practiceSection" class="section" style="display:none;">
+  <h3>🎯 अभ्यास</h3>
+  <div id="progress"></div>
+  <div id="gotoContainer">
+    <input id="gotoInput" type="number" placeholder="प्रश्न संख्या दर्ज करें">
+    <button id="gotoBtn" onclick="goToQuestion()">🔎 जाएँ</button>
+  </div>
+  <div id="quizQuestion"></div>
+  <div id="quizOptions"></div>
+  <button id="submitBtn" class="btn" onclick="submitQuiz()" style="display:none;">✅ क्विज सबमिट करें</button>
+</div>
+
+<script>
+  const main = localStorage.getItem("selectedMain");
+  const sub = localStorage.getItem("selectedSub");
+  const mode = localStorage.getItem("quizMode");
+  const currentKey = `quiz_${main}_${sub}`;
+
+  let questions = JSON.parse(localStorage.getItem(currentKey) || '[]');
+  let currentQuestion = 0, correctCount = 0, incorrectCount = 0;
+  let editIndex = -1;
+
+  document.getElementById("pageTitle").textContent =
+    mode === "input" ? "➕ प्रश्न जोड़ें" : "🎯 अभ्यास";
+
+  if (mode === "input") {
+    document.getElementById("inputSection").style.display = "block";
+    document.getElementById("questionCount").textContent = `🔢 कुल प्रश्न: ${questions.length}`;
+    listEditable();
+  } else {
+    if (questions.length === 0) {
+      alert("❗ कोई प्रश्न नहीं मिला!");
+      window.location.href = "action.html";
+    } else {
+      document.getElementById("practiceSection").style.display = "block";
+      document.getElementById("submitBtn").style.display = "block";
+      showQuestion();
+    }
+  }
+
+  function saveQuestion() {
+    const q = document.getElementById("question").value.trim();
+    const A = document.getElementById("optA").value.trim();
+    const B = document.getElementById("optB").value.trim();
+    const C = document.getElementById("optC").value.trim();
+    const D = document.getElementById("optD").value.trim();
+    const correct = document.getElementById("correct").value;
+    const exp = document.getElementById("explanation").value.trim();
+
+    if (!q || !A || !B || !C || !D || !correct) {
+      alert("❗ सभी फ़ील्ड भरें!");
+      return;
+    }
+
+    const newQ = { question: q, options: { A, B, C, D }, correct, explanation: exp };
+
+    if (editIndex >= 0) {
+      questions[editIndex] = newQ;
+      editIndex = -1;
+    } else {
+      questions.push(newQ);
+    }
+
+    localStorage.setItem(currentKey, JSON.stringify(questions));
+
+    document.getElementById("question").value = '';
+    document.getElementById("optA").value = '';
+    document.getElementById("optB").value = '';
+    document.getElementById("optC").value = '';
+    document.getElementById("optD").value = '';
+    document.getElementById("explanation").value = '';
+    document.getElementById("correct").value = 'A';
+
+    document.getElementById("questionCount").textContent = `🔢 कुल प्रश्न: ${questions.length}`;
+    listEditable();
+    alert("✅ प्रश्न सेव हुआ!");
+  }
+
+  function listEditable() {
+    const div = document.getElementById("editList");
+    div.innerHTML = "";
+    questions.forEach((q, i) => {
+      const p = document.createElement("p");
+
+      const b = document.createElement("button");
+      b.className = "edit-btn";
+      b.title = "संपादित करें";
+      b.innerText = "✏️";
+      b.onclick = () => editQuestion(i);
+
+      const span = document.createElement("span");
+      span.textContent = `${i + 1}. ${q.question}`;
+
+      p.appendChild(b);
+      p.appendChild(span);
+      div.appendChild(p);
+    });
+  }
+
+  function editQuestion(index) {
+    const q = questions[index];
+    document.getElementById("question").value = q.question;
+    document.getElementById("optA").value = q.options.A;
+    document.getElementById("optB").value = q.options.B;
+    document.getElementById("optC").value = q.options.C;
+    document.getElementById("optD").value = q.options.D;
+    document.getElementById("correct").value = q.correct;
+    document.getElementById("explanation").value = q.explanation;
+    editIndex = index;
+  }
+
+  function showQuestion() {
+    const q = questions[currentQuestion];
+    if (!q) return;
+
+    document.getElementById("progress").innerHTML =
+      `प्रश्न ${currentQuestion + 1} / ${questions.length}`;
+
+    document.getElementById("quizQuestion").innerHTML =
+      `<strong>Q${currentQuestion + 1}:</strong><br>${q.question.replace(/\n/g, "<br>")}`;
+    
+    document.getElementById("quizOptions").innerHTML = "";
+
+    for (let key in q.options) {
+      const btn = document.createElement("button");
+      btn.className = "btn-option";
+      btn.innerText = `${key}: ${q.options[key]}`;
+      btn.onclick = () => checkAnswer(key);
+      document.getElementById("quizOptions").appendChild(btn);
+    }
+  }
+
+  function checkAnswer(selected) {
+    const q = questions[currentQuestion];
+    const buttons = document.querySelectorAll(".btn-option");
+
+    buttons.forEach(btn => {
+      const key = btn.innerText.split(':')[0];
+      if (key === q.correct) {
+        btn.style.backgroundColor = "green";
+        btn.style.color = "white";
+      } else if (key === selected) {
+        btn.style.backgroundColor = "red";
+        btn.style.color = "white";
+      }
+      btn.disabled = true;
+    });
+
+    const explanation = document.createElement("div");
+    explanation.className = "explanation";
+
+    if (selected === q.correct) {
+      correctCount++;
+      explanation.innerHTML = `✅ सही उत्तर!<br><br>🔍 <u>व्याख्या:</u> ${q.explanation}`;
+      explanation.style.color = "green";
+    } else {
+      incorrectCount++;
+      explanation.innerHTML = `❌ गलत उत्तर! सही उत्तर है: <b>${q.correct}</b><br><br>🔍 <u>व्याख्या:</u> ${q.explanation}`;
+      explanation.style.color = "red";
+    }
+
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "btn";
+    nextBtn.innerText = "👉 अगला प्रश्न";
+    nextBtn.onclick = () => {
+      currentQuestion++;
+      showQuestion();
+    };
+
+    document.getElementById("quizOptions").appendChild(explanation);
+    document.getElementById("quizOptions").appendChild(nextBtn);
+  }
+
+  function submitQuiz() {
+    const total = correctCount + incorrectCount;
+    const acc = total ? ((correctCount / total) * 100).toFixed(2) : 0;
+
+    document.getElementById("quizQuestion").innerHTML =
+      `✅ सही: ${correctCount}<br>❌ गलत: ${incorrectCount}<br>📊 सटीकता: ${acc}%`;
+    document.getElementById("quizOptions").innerHTML = "";
+    document.getElementById("submitBtn").style.display = "none";
+  }
+
+  function goToQuestion() {
+    const val = parseInt(document.getElementById("gotoInput").value);
+    if (!val || val < 1 || val > questions.length) {
+      alert(`❗ कृपया 1 से ${questions.length} के बीच मान दर्ज करें`);
+      return;
+    }
+    currentQuestion = val - 1;
+    showQuestion();
+  }
+</script>
+</body>
+</html>
+
+
+
+
+
